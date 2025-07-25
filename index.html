@@ -291,6 +291,41 @@
             transform: none;
         }
 
+        .reset-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(231,76,60,0.3);
+        }
+
+        .reset-btn:hover {
+            background: #c0392b;
+            transform: translateY(-1px);
+        }
+
+        .save-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(46, 204, 113, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .save-indicator.show {
+            opacity: 1;
+        }
+
         /* Arrière-plans spécifiques avec animations */
         .slide-intro {
             background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:%2387CEEB"/><stop offset="50%" style="stop-color:%23FFD700"/><stop offset="100%" style="stop-color:%23FF69B4"/></linearGradient><radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0%" style="stop-color:%23FFD700"/><stop offset="100%" style="stop-color:%23FFA500"/></radialGradient></defs><rect width="1200" height="800" fill="url(%23sky)"/><circle cx="1000" cy="150" r="80" fill="url(%23sun)"><animateTransform attributeName="transform" type="rotate" values="0 1000 150;360 1000 150" dur="20s" repeatCount="indefinite"/></circle><ellipse cx="200" cy="700" rx="300" ry="100" fill="%23F4A460"/><rect x="150" y="600" width="20" height="100" fill="%238B4513"/><circle cx="160" cy="600" r="40" fill="%2332CD32"><animate attributeName="r" values="35;45;35" dur="3s" repeatCount="indefinite"/></circle><polygon points="900,600 950,550 1000,600" fill="%2332CD32"/><rect x="50" y="750" width="1100" height="50" fill="%234169E1"><animate attributeName="height" values="40;60;40" dur="4s" repeatCount="indefinite"/></rect><circle cx="300" cy="200" r="15" fill="%23FFFFFF" opacity="0.8"><animate attributeName="cy" values="200;180;200" dur="6s" repeatCount="indefinite"/></circle><circle cx="700" cy="250" r="12" fill="%23FFFFFF" opacity="0.6"><animate attributeName="cy" values="250;230;250" dur="8s" repeatCount="indefinite"/></circle></svg>');
@@ -407,6 +442,9 @@
     </style>
 </head>
 <body>
+    <!-- Indicateur de sauvegarde -->
+    <div class="save-indicator" id="saveIndicator">💾 Données sauvegardées</div>
+
     <!-- Slide d'accueil -->
     <div class="slide slide-intro active" id="slide-intro">
         <div class="slide-header">
@@ -445,6 +483,8 @@
         
         <div style="text-align: center;">
             <button class="start-adventure" onclick="nextSlide()">🚀 Commencer l'Aventure 🚀</button>
+            <br><br>
+            <button class="reset-btn" onclick="resetAllData()">🗑️ Remettre à Zéro</button>
         </div>
     </div>
 
@@ -1142,6 +1182,95 @@
             day5: { voitures: 0, habitations: 0, garanties: 0, reprises: 0, rdv: 0 }
         };
 
+        // ========== SYSTÈME DE SAUVEGARDE ==========
+
+        // Sauvegarde des données dans localStorage
+        function saveData() {
+            try {
+                const gameData = {
+                    objectives: objectives,
+                    dailyCounters: dailyCounters,
+                    currentSlide: currentSlide,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('aventure-jsparks-data', JSON.stringify(gameData));
+                showSaveIndicator();
+                console.log('✅ Données sauvegardées avec succès');
+            } catch (error) {
+                console.error('❌ Erreur lors de la sauvegarde:', error);
+            }
+        }
+
+        // Chargement des données depuis localStorage
+        function loadData() {
+            try {
+                const savedData = localStorage.getItem('aventure-jsparks-data');
+                if (savedData) {
+                    const gameData = JSON.parse(savedData);
+                    
+                    // Restauration des objectifs jour 1
+                    if (gameData.objectives) {
+                        Object.assign(objectives, gameData.objectives);
+                    }
+                    
+                    // Restauration des compteurs des autres jours
+                    if (gameData.dailyCounters) {
+                        Object.assign(dailyCounters, gameData.dailyCounters);
+                    }
+                    
+                    // Restauration de la slide courante
+                    if (gameData.currentSlide !== undefined) {
+                        currentSlide = gameData.currentSlide;
+                    }
+                    
+                    console.log('✅ Données restaurées avec succès');
+                    return true;
+                }
+            } catch (error) {
+                console.error('❌ Erreur lors du chargement:', error);
+            }
+            return false;
+        }
+
+        // Réinitialisation complète des données
+        function resetAllData() {
+            if (confirm('⚠️ Êtes-vous sûr de vouloir remettre à zéro toutes les données ? Cette action est irréversible.')) {
+                try {
+                    // Remise à zéro des objets
+                    Object.keys(objectives).forEach(key => {
+                        objectives[key].current = 0;
+                    });
+                    
+                    Object.keys(dailyCounters).forEach(day => {
+                        Object.keys(dailyCounters[day]).forEach(key => {
+                            dailyCounters[day][key] = 0;
+                        });
+                    });
+                    
+                    // Sauvegarde et mise à jour affichage
+                    saveData();
+                    updateAllDisplays();
+                    
+                    alert('✅ Toutes les données ont été remises à zéro !');
+                    console.log('🔄 Reset complet effectué');
+                } catch (error) {
+                    console.error('❌ Erreur lors du reset:', error);
+                    alert('❌ Erreur lors de la remise à zéro');
+                }
+            }
+        }
+
+        // Indicateur visuel de sauvegarde
+        function showSaveIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 2000);
+        }
+
+        // ========== FIN SYSTÈME DE SAUVEGARDE ==========
+
         // Messages d'Audrey (remerciements) selon l'avancement
         const audreyMessages = {
             start: [
@@ -1285,6 +1414,9 @@
                     }
                 }
                 
+                // Sauvegarde automatique
+                saveData();
+                
                 // Mise à jour des bulles de dialogue avec délai
                 updateSpeechBubbles('day1');
             }
@@ -1329,9 +1461,63 @@
                     });
                 }
                 
+                // Sauvegarde automatique
+                saveData();
+                
                 // Mise à jour des bulles de dialogue avec délai
                 updateSpeechBubbles(day);
             }
+        }
+
+        // Mise à jour de tous les affichages après chargement
+        function updateAllDisplays() {
+            // Jour 1
+            Object.keys(objectives).forEach(type => {
+                const current = objectives[type].current;
+                const target = objectives[type].target;
+                
+                document.getElementById(`count-${type}`).textContent = current;
+                document.getElementById(`text-${type}`).textContent = `${current} / ${target}`;
+                
+                const percentage = Math.min((current / target) * 100, 100);
+                document.getElementById(`progress-${type}`).style.width = `${percentage}%`;
+                
+                if (current >= target) {
+                    const objectiveItem = document.querySelector(`[data-objective="${type}"]`);
+                    if (objectiveItem) {
+                        objectiveItem.classList.add('objective-completed');
+                    }
+                }
+            });
+            
+            // Autres jours
+            Object.keys(dailyCounters).forEach(day => {
+                Object.keys(dailyCounters[day]).forEach(type => {
+                    const current = dailyCounters[day][type];
+                    const target = dayObjectives[day][type];
+                    
+                    const countElement = document.getElementById(`count-${type}-${day}`);
+                    const textElement = document.getElementById(`text-${type}-${day}`);
+                    const progressElement = document.getElementById(`progress-${type}-${day}`);
+                    
+                    if (countElement) countElement.textContent = current;
+                    if (textElement) textElement.textContent = `${current} / ${target}`;
+                    if (progressElement) {
+                        const percentage = Math.min((current / target) * 100, 100);
+                        progressElement.style.width = `${percentage}%`;
+                    }
+                    
+                    if (current >= target) {
+                        const objectiveItems = document.querySelectorAll('.objective-item');
+                        objectiveItems.forEach(item => {
+                            const progressElement = item.querySelector(`#progress-${type}-${day}`);
+                            if (progressElement) {
+                                item.classList.add('objective-completed');
+                            }
+                        });
+                    }
+                });
+            });
         }
 
         // Animation de célébration
@@ -1414,6 +1600,9 @@
             });
             
             currentSlide = index;
+            
+            // Sauvegarde de la slide courante
+            saveData();
             
             // Mise à jour des boutons de navigation
             document.getElementById('prevBtn').disabled = index === 0;
@@ -1498,15 +1687,40 @@
             }
         });
 
-        // Messages d'introduction aléatoires au chargement
+        // Initialisation au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initialisation de l\'Aventure J Sparks');
+            
+            // Chargement des données sauvegardées
+            const dataLoaded = loadData();
+            
+            if (dataLoaded) {
+                console.log('📁 Données restaurées depuis la sauvegarde');
+                // Mise à jour de tous les affichages
+                updateAllDisplays();
+                // Affichage de la slide sauvegardée
+                showSlide(currentSlide);
+            } else {
+                console.log('🆕 Nouvelle partie');
+                // Initialisation par défaut
+                showSlide(0);
+            }
+            
+            // Messages d'introduction aléatoires
             setTimeout(() => {
                 updateSpeechBubbles('day1');
             }, 2000);
         });
 
-        // Initialisation
-        showSlide(0);
+        // Sauvegarde automatique avant fermeture de page
+        window.addEventListener('beforeunload', function() {
+            saveData();
+        });
+
+        // Sauvegarde périodique (toutes les 30 secondes)
+        setInterval(function() {
+            saveData();
+        }, 30000);
     </script>
 </body>
 </html>
